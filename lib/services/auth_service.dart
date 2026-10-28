@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -13,9 +14,10 @@ class AuthService {
   }) async {
     final normalizedUsername = username.trim();
 
-    // Validasi input sebelum mengirim permintaan ke server.
     if (normalizedUsername.isEmpty || password.isEmpty) {
-      throw const AuthException('Username dan password wajib diisi.');
+      throw const AuthException(
+        'Username dan password wajib diisi.',
+      );
     }
 
     try {
@@ -33,47 +35,48 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 15));
 
-      // Pastikan respons server berupa JSON yang valid.
       final dynamic decoded = jsonDecode(response.body);
 
       if (decoded is! Map<String, dynamic>) {
-        throw const AuthException('Format respons dari server tidak valid.');
+        throw const AuthException(
+          'Format respons dari server tidak valid.',
+        );
       }
 
-      // Username/password salah atau akun tidak aktif.
       if (response.statusCode == 401) {
         return null;
       }
 
-      // Tangani respons HTTP selain 200.
       if (response.statusCode != 200) {
         final message = decoded['message'];
 
         throw AuthException(
-          message is String ? message : 'Server gagal memproses login.',
+          message is String
+              ? message
+              : 'Server gagal memproses login.',
         );
       }
 
-      // Validasi struktur respons login.
       if (decoded['success'] != true ||
           decoded['data'] is! Map<String, dynamic>) {
         final message = decoded['message'];
 
         throw AuthException(
-          message is String ? message : 'Respons login tidak sesuai format.',
+          message is String
+              ? message
+              : 'Respons login tidak sesuai format.',
         );
       }
 
-      // Ubah data JSON menjadi objek AppUser.
-      final userData = decoded['data'] as Map<String, dynamic>;
+      final userData =
+          decoded['data'] as Map<String, dynamic>;
+
       final user = AppUser.fromJson(userData);
 
-      // Jangan lanjutkan login jika akun tidak aktif.
       if (!user.isActive) {
         return null;
       }
 
-      // Token wajib tersedia untuk mengakses API yang dilindungi.
       if (user.token.trim().isEmpty) {
         throw const AuthException(
           'Token login tidak ditemukan dari server. '
@@ -83,14 +86,61 @@ class AuthService {
 
       return user;
     } on TimeoutException {
-      throw const AuthException('Server terlalu lama merespons. Coba lagi.');
+      throw const AuthException(
+        'Server terlalu lama merespons. Coba lagi.',
+      );
     } on http.ClientException {
       throw const AuthException(
         'Tidak dapat terhubung ke server. '
         'Periksa koneksi dan URL API.',
       );
     } on FormatException {
-      throw const AuthException('Respons server bukan JSON yang valid.');
+      throw const AuthException(
+        'Respons server bukan JSON yang valid.',
+      );
+    }
+  }
+
+  Future<AppUser?> validateSession(String token) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+              '${ApiConfig.baseUrl}/validate_session.php',
+            ),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final dynamic decoded = jsonDecode(response.body);
+
+      if (decoded is! Map<String, dynamic> ||
+          decoded['success'] != true ||
+          decoded['data'] is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final data =
+          decoded['data'] as Map<String, dynamic>;
+
+      data['token'] = token;
+
+      final user = AppUser.fromJson(data);
+
+      if (!user.isActive || user.token.isEmpty) {
+        return null;
+      }
+
+      return user;
+    } on Exception {
+      return null;
     }
   }
 }

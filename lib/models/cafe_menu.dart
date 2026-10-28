@@ -1,4 +1,3 @@
-
 class CafeMenu {
   final int id;
   final String name;
@@ -14,24 +13,24 @@ class CafeMenu {
     required this.isAvailable,
   });
 
-  factory CafeMenu.fromMap(Map<String, dynamic> map) {
+  factory CafeMenu.fromJson(Map<String, dynamic> json) {
     return CafeMenu(
-      id: int.parse(map['id'].toString()),
-      name: map['name']?.toString() ?? '',
-      category: map['category']?.toString() ?? '',
-      price: double.parse(map['price'].toString()),
-      isAvailable: map['is_available'] == true ||
-          map['is_available'].toString() == '1',
+      id: int.parse(json['id'].toString()),
+      name: json['name']?.toString() ?? '',
+      category: json['category']?.toString() ?? 'Lainnya',
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      isAvailable: json['is_available'].toString() == '1' ||
+          json['is_available'].toString().toLowerCase() == 'true',
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'category': category,
       'price': price,
-      'is_available': isAvailable ? 1 : 0,
+      'is_available': isAvailable,
     };
   }
 }
